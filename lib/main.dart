@@ -5,9 +5,24 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:oauth1/oauth1.dart' as oauth1;
 
-void main() {
+void main() async {
   runApp(const MyApp());
+  var clientCredentials = oauth1.ClientCredentials(
+    'API_KEY',
+    'API_SECRET',
+  );
+
+  var authorization = oauth1.Authorization(clientCredentials, oauth1.Platform());
+
+  var client = oauth1.Client(authorization as oauth1.SignatureMethod);
+
+  var response = await client.get(Uri.parse(''));
+
+  print(response.body);
+
+  client.close();
 }
 
 class MyApp extends StatelessWidget {
