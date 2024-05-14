@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
@@ -28,61 +30,73 @@ class VideoDownloader extends StatefulWidget {
 }
 
 class _VideoDownloaderState extends State<VideoDownloader> {
-  final TextEditingController _urlController = TextEditingController();
-  String? _filePath;
+  final TextEditingController _tweetUrlController = TextEditingController();
+  String? _downloadUrl;
+  String? _errorMessage;
 
-  Future<void> _downloadVideo(url) async {
-    // Fetch the tweet
-    var response = await http.get(Uri.parse(_urlController.text));
+  Future<void> _fetchXVideos() async {
+    setState(() {
+      _downloadUrl = null;
+      _errorMessage = null;
+    });
+
+    String tweetUrl = _tweetUrlController.text;
+
+    // Make request to Twitter API
+    var response = await http.get(Uri.parse(
+        'https://api.twitter.com/1.1/statuses/show.json?id=$tweetUrl'));
+
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      // Parse tweet data
+      var tweetData = jsonDecode(response.body);
+
+      // Extract video URL
+      String? videoUrl = tweetData['extended_entities']['media'][0]
+          ['video_info']['variants'][0]['url'];
+
+      setState(() {
+        _downloadUrl = videoUrl;
+      });
+    } else {
+      setState(() {
+        _errorMessage = 'Failed to fetch tweet data.';
+      });
+    }
+  }
+
+  Future<void> _downloadVideo() async {
+    if (_downloadUrl == null) {
+      setState(() {
+        _errorMessage = 'No video to download.';
+      });
+      return;
+    }
 
     try {
-      Fluttertoast.showToast(
-        msg: "Downloading",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
-      );
+      // Make request to download video
+      var videoResponse = await http.get(Uri.parse(_downloadUrl!));
 
-      if (response.statusCode == 200) {
-        Fluttertoast.showToast(
-          msg: "Parsing video...",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0
-        );
-        // Find video URL in the response
-        // Parse the HTML to get the video URL
-
-        // Placeholder code: You will need to parse the HTML to extract the video URL.
-        // Depending on the complexity of the video URL extraction, you may need a package to parse the HTML.
-
-        // Assuming you get the video URL in `_videoUrl`
-        // Download the video
-        Directory tempDir = await getTemporaryDirectory();
-        String filePath = '${tempDir.path}/video.mp4';
-
-        http.Response videoResponse = await http.get(Uri.parse(url!));
-
-        if (videoResponse.statusCode == 200) {
-          File file = File(filePath);
-          await file.writeAsBytes(videoResponse.bodyBytes);
-          setState(() {
-            _filePath = filePath;
-          });
-        }
+      if (videoResponse.statusCode == 200) {
+        // Save video file
+        final file = File('x_video.mp4');
+        await file.writeAsBytes(videoResponse.bodyBytes);
+        setState(() {
+          _errorMessage = 'Video downloaded successfully.';
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to download video.';
+        });
       }
     } catch (e) {
-      print(e);
+      setState(() {
+        _errorMessage = 'An error occurred while downloading the video.';
+      });
     }
-    
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,24 +109,27 @@ class _VideoDownloaderState extends State<VideoDownloader> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: _urlController,
+              controller: _tweetUrlController,
               decoration: const InputDecoration(
                 labelText: 'Enter Tweet URL',
               ),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () {
-                _downloadVideo(_urlController.text);
-              },
-              child: const Text('Download Video'),
+              onPressed: _fetchXVideos,
+              child: const Text('Fetch X Videos'),
             ),
+            const SizedBox(height: 10),
+            if (_downloadUrl != null)
+              ElevatedButton(
+                onPressed: _downloadVideo,
+                child: const Text('Download X Video'),
+              ),
             const SizedBox(height: 20),
-            if (_filePath != null)
-              Column(
-                children: [
-                  Text('Video downloaded at: $_filePath'),
-                ],
+            if (_errorMessage != null)
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
               ),
           ],
         ),
