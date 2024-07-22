@@ -1,28 +1,12 @@
-import 'dart:convert';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'package:oauth1/oauth1.dart' as oauth1;
+import 'package:html/parser.dart' as html;
 
-void main() async {
+void main() {
   runApp(const MyApp());
-  var clientCredentials = oauth1.ClientCredentials(
-    'API_KEY',
-    'API_SECRET',
-  );
-
-  var authorization = oauth1.Authorization(clientCredentials, oauth1.Platform());
-
-  var client = oauth1.Client(authorization as oauth1.SignatureMethod);
-
-  var response = await client.get(Uri.parse(''));
-
-  print(response.body);
-
-  client.close();
 }
 
 class MyApp extends StatelessWidget {
@@ -57,26 +41,43 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
     String tweetUrl = _tweetUrlController.text;
 
-    // Make request to Twitter API
-    var response = await http.get(Uri.parse(
-        'https://api.twitter.com/1.1/statuses/show.json?id=$tweetUrl'));
-
-    print(response.body);
-
-    if (response.statusCode == 200) {
-      // Parse tweet data
-      var tweetData = jsonDecode(response.body);
-
-      // Extract video URL
-      String? videoUrl = tweetData['extended_entities']['media'][0]
-          ['video_info']['variants'][0]['url'];
-
+    if (tweetUrl.isEmpty) {
       setState(() {
-        _downloadUrl = videoUrl;
+        _errorMessage = 'Please enter a tweet URL.';
       });
-    } else {
+      return;
+    }
+
+    try {
+      var apiUrl = 'https://twitsave.com/info?url=$tweetUrl';
+      var response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        var document = html.parse(response.body);
+        var downloadButton =
+            document.querySelectorAll('div.origin-top-right')[0];
+        var qualityButtons = downloadButton.querySelectorAll('a');
+        var highestQualityUrl = qualityButtons[0].attributes['href'];
+
+        var fileNameElement = document
+            .querySelectorAll('div.leading-tight')[0]
+            .querySelectorAll('p.m-2')[0];
+        var fileName = fileNameElement.text
+                .trim()
+                .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ') +
+            '.mp4';
+
+        setState(() {
+          _downloadUrl = highestQualityUrl;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to fetch tweet data.';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to fetch tweet data.';
+        _errorMessage = 'An error occurred while fetching the video URL.';
       });
     }
   }
@@ -90,16 +91,26 @@ class _VideoDownloaderState extends State<VideoDownloader> {
     }
 
     try {
-      // Make request to download video
       var videoResponse = await http.get(Uri.parse(_downloadUrl!));
 
       if (videoResponse.statusCode == 200) {
-        // Save video file
-        final file = File('x_video.mp4');
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/x_video.mp4';
+        final file = File(filePath);
         await file.writeAsBytes(videoResponse.bodyBytes);
+
         setState(() {
-          _errorMessage = 'Video downloaded successfully.';
+          _errorMessage = 'Video downloaded successfully at $filePath';
         });
+
+        Fluttertoast.showToast(
+            msg: "Video downloaded successfully!",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.green,
+            textColor: Colors.white,
+            fontSize: 16.0);
       } else {
         setState(() {
           _errorMessage = 'Failed to download video.';
