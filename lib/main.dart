@@ -62,10 +62,9 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         var fileNameElement = document
             .querySelectorAll('div.leading-tight')[0]
             .querySelectorAll('p.m-2')[0];
-        var fileName = fileNameElement.text
+        var fileName = '${fileNameElement.text
                 .trim()
-                .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ') +
-            '.mp4';
+                .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')}.mp4';
 
         setState(() {
           _downloadUrl = highestQualityUrl;
