@@ -1,12 +1,9 @@
-// import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:html/parser.dart' as html;
-// import 'package:oauth1/oauth1.dart' as oauth1;
 
 /// ## Note
 /// - This script relies on the external website [twitsave.com](https://twitsave.com) to retrieve the video URL for downloading.
@@ -42,14 +39,14 @@ class VideoDownloader extends StatefulWidget {
 class _VideoDownloaderState extends State<VideoDownloader> {
   final TextEditingController _tweetUrlController = TextEditingController();
   String? _downloadUrl;
-  // String? _errorMessage;
   String? _fileName;
   bool _isFetching = false;
+  bool _isDownloading = false;
+  double _progress = 0.0;
 
   Future<void> _fetchXVideos() async {
     setState(() {
       _downloadUrl = null;
-      // _errorMessage = null;
       _fileName = null;
       _isFetching = true;
     });
@@ -58,22 +55,19 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
     if (tweetUrl.isEmpty) {
       Fluttertoast.showToast(
-        msg: "Please enter a tweet URL",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0);
-      /* setState(() {
-        _errorMessage = 'Please enter a tweet URL.';
-      }); */
+          msg: "Please enter a tweet URL",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
       return;
     }
 
     try {
       var apiUrl = 'https://twitsave.com/info?url=$tweetUrl';
-      var response = await get(Uri.parse(apiUrl));
+      var response = await http.get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
         var document = html.parse(response.body);
         var downloadButton =
@@ -84,25 +78,24 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         var fileNameElement = document
             .querySelectorAll('div.leading-tight')[0]
             .querySelectorAll('p.m-2')[0];
-        var fileName = '${fileNameElement.text
-                .trim()
-                .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')}.mp4';
+        var fileName =
+            '${fileNameElement.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')}.mp4';
 
         setState(() {
           _downloadUrl = highestQualityUrl;
           _fileName = fileName;
+          _isFetching = false;
         });
       } else {
         Fluttertoast.showToast(
-          msg: "Failed to fetch tweet data",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0);
+            msg: "Failed to fetch tweet data",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0);
         setState(() {
-          // _errorMessage = 'Failed to fetch tweet data.';
           _isFetching = false;
         });
       }
@@ -110,15 +103,14 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       print(tweetUrl);
       print(e);
       Fluttertoast.showToast(
-        msg: "An error occurred while fetching the video URL",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0);
+          msg: "An error occurred while fetching the video URL",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
       setState(() {
-        // _errorMessage = 'An error occurred while fetching the video URL.';
         _isFetching = false;
       });
     }
@@ -127,65 +119,97 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   Future<void> _downloadVideo() async {
     if (_downloadUrl == null) {
       Fluttertoast.showToast(
-        msg: "No video to download",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0);
-      /* setState(() {
-        _errorMessage = 'No video to download.';
-      }); */
-      return;
-    }
-
-    try {
-      var videoResponse = await http.get(Uri.parse(_downloadUrl!));
-
-      if (videoResponse.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/$_fileName.mp4';
-        final file = File(filePath);
-        await file.writeAsBytes(videoResponse.bodyBytes);
-
-        /* setState(() {
-          _errorMessage = 'Video downloaded successfully at $filePath';
-        }); */
-
-        Fluttertoast.showToast(
-            msg: "Video downloaded successfully at $filePath",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
-            fontSize: 16.0);
-      } else {
-        Fluttertoast.showToast(
-          msg: "Failed to download video",
+          msg: "No video to download",
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
           backgroundColor: Colors.red,
           textColor: Colors.white,
           fontSize: 16.0);
-        /* setState(() {
-          _errorMessage = 'Failed to download video.';
-        }); */
+      return;
+    }
+
+    try {
+      setState(() {
+        _isDownloading = true;
+        _progress = 0.0;
+      });
+
+      var request = http.Request('GET', Uri.parse(_downloadUrl!));
+      var response = await http.Client().send(request);
+
+      if (response.statusCode == 200) {
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/$_fileName';
+        final file = File(filePath);
+        var bytes = <int>[];
+        var totalBytes = response.contentLength ?? 0;
+        var downloadedBytes = 0;
+
+        response.stream.listen(
+          (List<int> newBytes) {
+            bytes.addAll(newBytes);
+            downloadedBytes += newBytes.length;
+            setState(() {
+              _progress = totalBytes != 0 ? downloadedBytes / totalBytes : 0.0;
+            });
+          },
+          onDone: () async {
+            await file.writeAsBytes(bytes);
+            Fluttertoast.showToast(
+                msg: "Video downloaded successfully at $filePath",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.green,
+                textColor: Colors.white,
+                fontSize: 16.0);
+            setState(() {
+              _isDownloading = false;
+              _progress = 0.0;
+            });
+          },
+          onError: (e) {
+            Fluttertoast.showToast(
+                msg: "An error occurred while downloading the video",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                fontSize: 16.0);
+            setState(() {
+              _isDownloading = false;
+              _progress = 0.0;
+            });
+          },
+          cancelOnError: true,
+        );
+      } else {
+        Fluttertoast.showToast(
+            msg: "Failed to download video",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0);
+        setState(() {
+          _isDownloading = false;
+        });
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: "An error occurred while downloading the video",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0);
-      /* setState(() {
-        _errorMessage = 'An error occurred while downloading the video.';
-      }); */
+          msg: "An error occurred while downloading the video",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      setState(() {
+        _isDownloading = false;
+      });
     }
   }
 
@@ -210,21 +234,34 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             ElevatedButton(
               onPressed: !_isFetching ? _fetchXVideos : null,
               child: !_isFetching
-                  ? const Text('Fetch 𝕏 Videos')
-                  : const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2,)),
+                  ? const Text('Fetch 𝕏 Video')
+                  : const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    ),
             ),
             const SizedBox(height: 10),
             if (_downloadUrl != null)
               ElevatedButton(
-                onPressed: _downloadVideo,
-                child: const Text('Download 𝕏 Video'),
+                onPressed: !_isDownloading ? _downloadVideo : null,
+                child: !_isDownloading
+                    ? const Text('Download 𝕏 Video')
+                    : const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      ),
               ),
-            const SizedBox(height: 20),
-            /* if (_errorMessage != null)
-              Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ), */
+            if (_isDownloading)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: LinearProgressIndicator(value: _progress),
+              ),
           ],
         ),
       ),
