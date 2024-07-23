@@ -79,8 +79,10 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             .querySelectorAll('div.leading-tight')[0]
             .querySelectorAll('p.m-2')[0];
         var fileName =
-            '${fileNameElement.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')}.mp4';
-
+            '${fileNameElement.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')}.mp4';
+        if (fileName.length > 50) {
+          fileName = '${fileName.substring(0, 50)}.mp4';
+        }
         setState(() {
           _downloadUrl = highestQualityUrl;
           _fileName = fileName;
@@ -140,7 +142,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
       if (response.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/$_fileName';
+        final filePath = '${directory.path}/Download/$_fileName';
         final file = File(filePath);
         var bytes = <int>[];
         var totalBytes = response.contentLength ?? 0;
