@@ -1,9 +1,20 @@
+// import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:html/parser.dart' as html;
+// import 'package:oauth1/oauth1.dart' as oauth1;
+
+/// ## Note
+/// - This script relies on the external website [twitsave.com](https://twitsave.com) to retrieve the video URL for downloading.
+///   It uses the API provided by twitsave.com to fetch the video details.
+/// - Please ensure you have a stable internet connection and access to twitsave.com for the script to work properly.
+/// - Me and this project are not affiliated with [twitsave.com](https://twitsave.com).
+///   Please review and comply with the terms and conditions of [twitsave.com/terms](https://twitsave.com/terms)
+///   when using their services through this script.
 
 void main() {
   runApp(const MyApp());
@@ -50,8 +61,8 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
     try {
       var apiUrl = 'https://twitsave.com/info?url=$tweetUrl';
-      var response = await http.get(Uri.parse(apiUrl));
-
+      print(apiUrl);
+      var response = await get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
         var document = html.parse(response.body);
         var downloadButton =
@@ -75,6 +86,8 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         });
       }
     } catch (e) {
+      print(tweetUrl);
+      print(e);
       setState(() {
         _errorMessage = 'An error occurred while fetching the video URL.';
       });
@@ -126,7 +139,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('X Video Downloader'),
+        title: const Text('𝕏 Video Downloader'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -142,13 +155,13 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: _fetchXVideos,
-              child: const Text('Fetch X Videos'),
+              child: const Text('Fetch 𝕏 Videos'),
             ),
             const SizedBox(height: 10),
             if (_downloadUrl != null)
               ElevatedButton(
                 onPressed: _downloadVideo,
-                child: const Text('Download X Video'),
+                child: const Text('Download 𝕏 Video'),
               ),
             const SizedBox(height: 20),
             if (_errorMessage != null)
