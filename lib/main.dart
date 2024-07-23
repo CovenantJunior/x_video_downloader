@@ -142,7 +142,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
       if (response.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/Download/$_fileName';
+        final filePath = '${directory.path}/X Videos/$_fileName';
         final file = File(filePath);
         var bytes = <int>[];
         var totalBytes = response.contentLength ?? 0;
