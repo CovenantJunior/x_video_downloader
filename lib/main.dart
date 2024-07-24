@@ -69,11 +69,15 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       var apiUrl = 'https://twitsave.com/info?url=$tweetUrl';
       var response = await http.get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
+        print(response.toString());
         var document = html.parse(response.body);
         var downloadButton =
             document.querySelectorAll('div.origin-top-right')[0];
         var qualityButtons = downloadButton.querySelectorAll('a');
         var highestQualityUrl = qualityButtons[0].attributes['href'];
+        var highQualityText = qualityButtons[0].querySelector('.truncate');
+        print(highQualityText?.text);
+        var lowestQualityUrl = qualityButtons[1].attributes['href'];
         print(highestQualityUrl);
         var fileNameElement = document
             .querySelectorAll('div.leading-tight')[0]
