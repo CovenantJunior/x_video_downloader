@@ -41,6 +41,7 @@ dependencies:
   oauth1: ^2.0.0
   flutter_dotenv: ^5.1.0
   html: ^0.15.4
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

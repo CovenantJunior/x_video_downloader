@@ -4,6 +4,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:html/parser.dart' as html;
+import 'package:permission_handler/permission_handler.dart';
 
 /// ## Note
 /// - This script relies on the external website [twitsave.com](https://twitsave.com) to retrieve the video URL for downloading.
@@ -37,6 +38,21 @@ class VideoDownloader extends StatefulWidget {
 }
 
 class _VideoDownloaderState extends State<VideoDownloader> {
+  Future<void> requestPermissions() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.storage,
+      if (Platform.isAndroid) Permission.manageExternalStorage,
+    ].request();
+
+    if (statuses.containsValue(PermissionStatus.denied)) {
+      Fluttertoast.showToast(
+          msg: "App may malfunction without granted permissions",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1);
+    }
+  }
+
   final TextEditingController _tweetUrlController = TextEditingController();
   String? _highestQualityUrl;
   String? _lowestQualityUrl;
@@ -83,14 +99,16 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         var qualityButtons = downloadButton.querySelectorAll('a');
         var highestQualityUrl = qualityButtons[0].attributes['href'];
         var lowestQualityUrl = qualityButtons[1].attributes['href'];
-        var highestQualityText = qualityButtons[0].querySelector('.truncate')?.text
-        .replaceAll(RegExp(r'I/flutter \( \d{4}\):\s*'), '') // Remove prefix
-        .replaceAll(RegExp(r'\s+'), ' ')  // Replace multiple spaces with single space
-        .trim();
-        var lowestQualityText = qualityButtons[1].querySelector('.truncate')?.text
-        .replaceAll(RegExp(r'I/flutter \( \d{4}\):\s*'), '') // Remove prefix
-        .replaceAll(RegExp(r'\s+'), ' ')  // Replace multiple spaces with single space
-        .trim();
+        var highestQualityText = qualityButtons[0]
+            .querySelector('.truncate')
+            ?.text
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        var lowestQualityText = qualityButtons[1]
+            .querySelector('.truncate')
+            ?.text
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
         setState(() {
           _highestQualityText = highestQualityText;
           _lowestQualityText = lowestQualityText;
@@ -168,9 +186,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       var response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
-        final directory = await getDownloadsDirectory();
-        final filePath = '$directory/$_fileName';
-        print(filePath);
+        final directory = await getExternalStorageDirectory();
+        final dir = Directory('${directory?.path}/X Videos');
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        var filePath = '${dir.path}/$_fileName';
         final file = File(filePath);
         var bytes = <int>[];
         var totalBytes = response.contentLength ?? 0;
@@ -179,7 +200,6 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
         response.stream.listen(
           (List<int> newBytes) {
-            print(totalBytes);
             bytes.addAll(newBytes);
             downloadedBytes += newBytes.length;
             setState(() {
@@ -246,6 +266,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    requestPermissions();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -289,8 +315,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                   'Choose Resolution',
                   'Highest $_highestQualityText',
                   'Lowest $_lowestQualityText'
-                  ]
-                    .map<DropdownMenuItem<String>>((String value) {
+                ].map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
