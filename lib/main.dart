@@ -38,15 +38,20 @@ class VideoDownloader extends StatefulWidget {
 
 class _VideoDownloaderState extends State<VideoDownloader> {
   final TextEditingController _tweetUrlController = TextEditingController();
-  String? _downloadUrl;
+  String? _highestQualityUrl;
+  String? _lowestQualityUrl;
+  String? _highestQualityText;
+  String? _lowestQualityText;
   String? _fileName;
   bool _isFetching = false;
   bool _isDownloading = false;
   double _progress = 0.0;
+  String _selectedResolution = 'Choose Resolution';
 
   Future<void> _fetchXVideos() async {
     setState(() {
-      _downloadUrl = null;
+      _highestQualityUrl = null;
+      _lowestQualityUrl = null;
       _fileName = null;
       _isFetching = true;
     });
@@ -69,26 +74,35 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       var apiUrl = 'https://twitsave.com/info?url=$tweetUrl';
       var response = await http.get(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
-        print(response.toString());
         var document = html.parse(response.body);
         var downloadButton =
             document.querySelectorAll('div.origin-top-right')[0];
         var qualityButtons = downloadButton.querySelectorAll('a');
         var highestQualityUrl = qualityButtons[0].attributes['href'];
-        var highQualityText = qualityButtons[0].querySelector('.truncate');
-        print(highQualityText?.text);
         var lowestQualityUrl = qualityButtons[1].attributes['href'];
-        print(highestQualityUrl);
+        var highestQualityText = qualityButtons[0].querySelector('.truncate')?.text
+        .replaceAll(RegExp(r'I/flutter \( \d{4}\):\s*'), '') // Remove prefix
+        .replaceAll(RegExp(r'\s+'), ' ')  // Replace multiple spaces with single space
+        .trim();
+        var lowestQualityText = qualityButtons[1].querySelector('.truncate')?.text
+        .replaceAll(RegExp(r'I/flutter \( \d{4}\):\s*'), '') // Remove prefix
+        .replaceAll(RegExp(r'\s+'), ' ')  // Replace multiple spaces with single space
+        .trim();
+        setState(() {
+          _highestQualityText = highestQualityText;
+          _lowestQualityText = lowestQualityText;
+        });
         var fileNameElement = document
             .querySelectorAll('div.leading-tight')[0]
             .querySelectorAll('p.m-2')[0];
         var fileName =
-            '${fileNameElement.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')}.mp4';
+            '${fileNameElement.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')}.mp4';
         if (fileName.length > 50) {
           fileName = '${fileName.substring(0, 50)}.mp4';
         }
         setState(() {
-          _downloadUrl = highestQualityUrl;
+          _highestQualityUrl = highestQualityUrl;
+          _lowestQualityUrl = lowestQualityUrl;
           _fileName = fileName;
           _isFetching = false;
         });
@@ -106,7 +120,6 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         });
       }
     } catch (e) {
-      print(tweetUrl);
       print(e);
       Fluttertoast.showToast(
           msg: "An error occurred while fetching the video URL",
@@ -123,7 +136,14 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   }
 
   Future<void> _downloadVideo() async {
-    if (_downloadUrl == null) {
+    String? downloadUrl;
+    if (_selectedResolution.contains('Highest')) {
+      downloadUrl = _highestQualityUrl;
+    } else if (_selectedResolution.contains('Lowest')) {
+      downloadUrl = _lowestQualityUrl;
+    }
+
+    if (downloadUrl == null) {
       Fluttertoast.showToast(
           msg: "No video to download",
           toastLength: Toast.LENGTH_SHORT,
@@ -141,12 +161,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         _progress = 0.0;
       });
 
-      var request = http.Request('GET', Uri.parse(_downloadUrl!));
+      var request = http.Request('GET', Uri.parse(downloadUrl));
       var response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/X Videos/$_fileName';
+        final directory = await getDownloadsDirectory();
+        final filePath = '$directory/$_fileName';
         final file = File(filePath);
         var bytes = <int>[];
         var totalBytes = response.contentLength ?? 0;
@@ -250,7 +270,28 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                     ),
             ),
             const SizedBox(height: 10),
-            if (_downloadUrl != null)
+            if (_highestQualityUrl != null && _lowestQualityUrl != null)
+              DropdownButton<String>(
+                value: _selectedResolution,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedResolution = newValue!;
+                  });
+                },
+                items: <String>[
+                  'Choose Resolution',
+                  'Highest $_highestQualityText',
+                  'Lowest $_lowestQualityText'
+                  ]
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 10),
+            if (_highestQualityUrl != null || _lowestQualityUrl != null)
               ElevatedButton(
                 onPressed: !_isDownloading ? _downloadVideo : null,
                 child: !_isDownloading
