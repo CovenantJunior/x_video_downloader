@@ -6,14 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:html/parser.dart' as html;
 import 'package:permission_handler/permission_handler.dart';
 
-/// ## Note
-/// - This script relies on the external website [twitsave.com](https://twitsave.com) to retrieve the video URL for downloading.
-///   It uses the API provided by twitsave.com to fetch the video details.
-/// - Please ensure you have a stable internet connection and access to twitsave.com for the script to work properly.
-/// - Me and this project are not affiliated with [twitsave.com](https://twitsave.com).
-///   Please review and comply with the terms and conditions of [twitsave.com/terms](https://twitsave.com/terms)
-///   when using their services through this script.
-
 void main() {
   runApp(const MyApp());
 }
@@ -48,7 +40,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       Fluttertoast.showToast(
           msg: "App may malfunction without granted permissions",
           toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
+          gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1);
     }
   }
@@ -186,8 +178,8 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       var response = await http.Client().send(request);
 
       if (response.statusCode == 200) {
-        final directory = await getExternalStorageDirectory();
-        final dir = Directory('${directory?.path}/X Videos');
+        // final directory = await getApplicationDocumentsDirectory();
+        final dir = Directory('/storage/emulated/0/X Videos');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
