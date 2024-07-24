@@ -170,13 +170,16 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       if (response.statusCode == 200) {
         final directory = await getDownloadsDirectory();
         final filePath = '$directory/$_fileName';
+        print(filePath);
         final file = File(filePath);
         var bytes = <int>[];
         var totalBytes = response.contentLength ?? 0;
+        print(response.contentLength);
         var downloadedBytes = 0;
 
         response.stream.listen(
           (List<int> newBytes) {
+            print(totalBytes);
             bytes.addAll(newBytes);
             downloadedBytes += newBytes.length;
             setState(() {
@@ -279,6 +282,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedResolution = newValue!;
+                    _isDownloading = false;
                   });
                 },
                 items: <String>[
