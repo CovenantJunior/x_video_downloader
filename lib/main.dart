@@ -67,6 +67,9 @@ class _VideoDownloaderState extends State<VideoDownloader> {
           backgroundColor: Colors.red,
           textColor: Colors.white,
           fontSize: 16.0);
+      setState(() {
+        _isFetching = false;
+      });
       return;
     }
 
