@@ -214,6 +214,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             });
           },
           onError: (e) {
+            print(e);
             Fluttertoast.showToast(
                 msg: "An error occurred while downloading the video",
                 toastLength: Toast.LENGTH_SHORT,
