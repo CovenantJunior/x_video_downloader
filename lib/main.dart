@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
@@ -31,11 +32,11 @@ class VideoDownloader extends StatefulWidget {
 class _VideoDownloaderState extends State<VideoDownloader> {
   Future<void> requestPermissions() async {
     Map<Permission, PermissionStatus> statuses = await [
+      Permission.manageExternalStorage,
       Permission.storage,
-      if (Platform.isAndroid) Permission.manageExternalStorage,
     ].request();
-
-    if (statuses.containsValue(PermissionStatus.denied)) {
+    
+    if (!await Permission.manageExternalStorage.request().isGranted) {
       Fluttertoast.showToast(
           msg: "App may malfunction without granted permissions",
           toastLength: Toast.LENGTH_SHORT,
@@ -52,7 +53,14 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   String? _fileName;
   bool _isFetching = false;
   bool _isDownloading = false;
-  String _selectedResolution = 'Choose Resolution';
+  String _selectedResolution = 'Tap to Choose Resolution';
+
+  String getDeviceInternalPath(dir) {
+    print(dir);
+    List<String> comp = dir.path.split('/');
+    List<String> trunc = comp.sublist(1, 4);
+    return trunc.join('/');
+  }
 
   Future<void> _fetchXVideos() async {
     setState(() {
@@ -174,7 +182,9 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       final response = await http.get(Uri.parse(downloadUrl));
 
       if (response.statusCode == 200) {
-        final dir = Directory('/storage/emulated/0/X Videos');
+        final directory = await getApplicationDocumentsDirectory();
+        final storage = getDeviceInternalPath(directory);
+        final dir = Directory('/$storage/X Videos');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
@@ -186,7 +196,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
 
         Fluttertoast.showToast(
           msg: "Video downloaded successfully at $filePath",
-          toastLength: Toast.LENGTH_SHORT,
+          toastLength: Toast.LENGTH_LONG,
           gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
           backgroundColor: Colors.green,
@@ -242,7 +252,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
         title: const Text(
           '𝕏 Video Downloader',
           style: TextStyle(
-            color: Colors.white
+            color: Colors.white,
           ),
         ),
         backgroundColor: Colors.black,
@@ -291,6 +301,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
               DropdownButton<String>(
                 dropdownColor: Colors.black,
                 value: _selectedResolution,
+                icon: Container(),
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedResolution = newValue!;
@@ -298,7 +309,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                   });
                 },
                 items: <String>[
-                  'Choose Resolution',
+                  'Tap to Choose Resolution',
                   'Highest $_highestQualityText',
                   'Lowest $_lowestQualityText'
                 ].map<DropdownMenuItem<String>>((String value) {
@@ -341,7 +352,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    Text('Downloading...'),
+                    Text(
+                      'Downloading...',
+                      style: TextStyle(
+                        color: Colors.white
+                      ),
+                    ),
                     SizedBox(height: 20),
                     LinearProgressIndicator(),
                   ],
