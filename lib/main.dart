@@ -182,7 +182,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       final response = await http.get(Uri.parse(downloadUrl));
 
       if (response.statusCode == 200) {
-        final directory = await getApplicationDocumentsDirectory();
+        final directory = await getDownloadsDirectory();
         final storage = getDeviceInternalPath(directory);
         final dir = Directory('/$storage/X Videos');
         if (!await dir.exists()) {
