@@ -36,7 +36,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
       Permission.storage,
     ].request();
     
-    if (!await Permission.manageExternalStorage.request().isGranted) {
+    if (statuses.containsValue(PermissionStatus.denied)) {
       Fluttertoast.showToast(
           msg: "App may malfunction without granted permissions",
           toastLength: Toast.LENGTH_SHORT,
