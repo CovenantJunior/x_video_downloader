@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:html/parser.dart' as html;
 import 'package:permission_handler/permission_handler.dart';
 
@@ -53,7 +52,6 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   String? _fileName;
   bool _isFetching = false;
   bool _isDownloading = false;
-  double _progress = 0.0;
   String _selectedResolution = 'Choose Resolution';
 
   Future<void> _fetchXVideos() async {
@@ -171,87 +169,59 @@ class _VideoDownloaderState extends State<VideoDownloader> {
     try {
       setState(() {
         _isDownloading = true;
-        _progress = 0.0;
       });
 
-      var request = http.Request('GET', Uri.parse(downloadUrl));
-      var response = await http.Client().send(request);
+      final response = await http.get(Uri.parse(downloadUrl));
 
       if (response.statusCode == 200) {
-        // final directory = await getApplicationDocumentsDirectory();
         final dir = Directory('/storage/emulated/0/X Videos');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
+
         var filePath = '${dir.path}/$_fileName';
         final file = File(filePath);
-        var bytes = <int>[];
-        var totalBytes = response.contentLength ?? 0;
-        print(response.contentLength);
-        var downloadedBytes = 0;
 
-        response.stream.listen(
-          (List<int> newBytes) {
-            bytes.addAll(newBytes);
-            downloadedBytes += newBytes.length;
-            setState(() {
-              _progress = totalBytes != 0 ? downloadedBytes / totalBytes : 0.0;
-            });
-          },
-          onDone: () async {
-            await file.writeAsBytes(bytes);
-            Fluttertoast.showToast(
-                msg: "Video downloaded successfully at $filePath",
-                toastLength: Toast.LENGTH_SHORT,
-                gravity: ToastGravity.BOTTOM,
-                timeInSecForIosWeb: 1,
-                backgroundColor: Colors.green,
-                textColor: Colors.white,
-                fontSize: 16.0);
-            setState(() {
-              _isDownloading = false;
-              _progress = 0.0;
-            });
-          },
-          onError: (e) {
-            print(e);
-            Fluttertoast.showToast(
-                msg: "An error occurred while downloading the video",
-                toastLength: Toast.LENGTH_SHORT,
-                gravity: ToastGravity.BOTTOM,
-                timeInSecForIosWeb: 1,
-                backgroundColor: Colors.red,
-                textColor: Colors.white,
-                fontSize: 16.0);
-            setState(() {
-              _isDownloading = false;
-              _progress = 0.0;
-            });
-          },
-          cancelOnError: true,
-        );
-      } else {
+        await file.writeAsBytes(response.bodyBytes);
+
         Fluttertoast.showToast(
-            msg: "Failed to download video",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            fontSize: 16.0);
+          msg: "Video downloaded successfully at $filePath",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() {
           _isDownloading = false;
         });
-      }
-    } catch (e) {
-      Fluttertoast.showToast(
-          msg: "An error occurred while downloading the video",
+      } else {
+        Fluttertoast.showToast(
+          msg: "Failed to download video",
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
           backgroundColor: Colors.red,
           textColor: Colors.white,
-          fontSize: 16.0);
+          fontSize: 16.0,
+        );
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+
+    } catch(e){
+      print(e);
+      Fluttertoast.showToast(
+        msg: "An error occurred while downloading the video",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       setState(() {
         _isDownloading = false;
       });
@@ -267,8 +237,15 @@ class _VideoDownloaderState extends State<VideoDownloader> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('𝕏 Video Downloader'),
+        title: const Text(
+          '𝕏 Video Downloader',
+          style: TextStyle(
+            color: Colors.white
+          ),
+        ),
+        backgroundColor: Colors.black,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -277,15 +254,30 @@ class _VideoDownloaderState extends State<VideoDownloader> {
           children: [
             TextField(
               controller: _tweetUrlController,
+              style: const TextStyle(
+                color: Colors.blueGrey
+              ),
               decoration: const InputDecoration(
                 labelText: 'Enter Tweet URL',
+                labelStyle: TextStyle(
+                  color: Colors.white
+                ),
               ),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: !_isFetching ? _fetchXVideos : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                side: const BorderSide(width: 1, color: Colors.white),
+              ),
               child: !_isFetching
-                  ? const Text('Fetch 𝕏 Video')
+                  ? const Text(
+                    'Fetch 𝕏 Video',
+                    style: TextStyle(
+                      color: Colors.white
+                    ),
+                  )
                   : const SizedBox(
                       height: 20,
                       width: 20,
@@ -297,6 +289,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             const SizedBox(height: 10),
             if (_highestQualityUrl != null && _lowestQualityUrl != null)
               DropdownButton<String>(
+                dropdownColor: Colors.black,
                 value: _selectedResolution,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -311,7 +304,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                 ].map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value),
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Colors.white
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -319,8 +317,17 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             if (_highestQualityUrl != null || _lowestQualityUrl != null)
               ElevatedButton(
                 onPressed: !_isDownloading ? _downloadVideo : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  side: const BorderSide(width: 1, color: Colors.white),
+                ),
                 child: !_isDownloading
-                    ? const Text('Download 𝕏 Video')
+                    ? const Text(
+                      'Download 𝕏 Video',
+                      style: TextStyle(
+                        color: Colors.white
+                      ),
+                    )
                     : const SizedBox(
                         height: 20,
                         width: 20,
@@ -330,9 +337,15 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                       ),
               ),
             if (_isDownloading)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: LinearProgressIndicator(value: _progress),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Text('Downloading...'),
+                    SizedBox(height: 20),
+                    LinearProgressIndicator(),
+                  ],
+                ),
               ),
           ],
         ),
