@@ -265,12 +265,12 @@ class _VideoDownloaderState extends State<VideoDownloader> {
             TextField(
               controller: _tweetUrlController,
               style: const TextStyle(
-                color: Colors.blueGrey
+                color: Color.fromARGB(255, 156, 184, 198)
               ),
               decoration: const InputDecoration(
                 labelText: 'Enter Tweet URL',
                 labelStyle: TextStyle(
-                  color: Colors.white
+                  color: Color.fromARGB(255, 156, 184, 198)
                 ),
               ),
             ),
@@ -280,6 +280,9 @@ class _VideoDownloaderState extends State<VideoDownloader> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 side: const BorderSide(width: 1, color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: !_isFetching
                   ? const Text(
@@ -331,6 +334,9 @@ class _VideoDownloaderState extends State<VideoDownloader> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   side: const BorderSide(width: 1, color: Colors.white),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 child: !_isDownloading
                     ? const Text(
