@@ -5,13 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:x_video_downloader/components/bottom_nav_bar.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const Home());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class Home extends StatelessWidget {
+  const Home({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +373,7 @@ class _VideoDownloaderState extends State<VideoDownloader> {
           ],
         ),
       ),
+      // bottomNavigationBar: BottomNavBar(),
     );
   }
 }
